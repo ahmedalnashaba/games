@@ -542,16 +542,11 @@ function GAME_odd(){
   const varying=pick(vary,nv);
   const base={shape:pick(SHAPES,1)[0],color:pick(COLORS,1)[0],fill:true,count:1+R(3)};
   const pools={shape:SHAPES,color:COLORS,fill:[true,false],count:[1,2,3]};
-  const items=[];const seen=new Set();const id=o=>[o.shape,o.color,o.fill,o.count].join('|');
-  let guard=0;
-  while(items.length<n-1&&guard++<200){const o={...base};varying.forEach(k=>o[k]=pools[k][R(pools[k].length)]);if(!seen.has(id(o))||varying.length===0){seen.add(id(o));items.push(o)}}
-  while(items.length<n-1)items.push({...base});
-  const odd={...items[R(items.length)]};const alts=pools[P].filter(v=>v!==base[P]);odd[P]=alts[R(alts.length)];
-  // make sure the odd one doesn't also break another rule
-  // fairness: no other item may stand out alone on a varying attribute
-  const lonely=varying.some(k=>{const cnt={};[...items,odd].forEach(o=>cnt[o[k]]=(cnt[o[k]]||0)+1);return Object.values(cnt).some(v=>v===1)});
-  if(lonely&&(GAME_odd.t=(GAME_odd.t||0)+1)<60)return GAME_odd();GAME_odd.t=0;
-  const all=shuf([...items,odd]);const ai=all.indexOf(odd);
+  // every varying value appears at least twice, so only the rule-breaker stands alone
+  const all=Array.from({length:n},()=>({...base}));
+  varying.forEach(k=>{const vals=pick(pools[k],Math.max(1,Math.floor(n/2)));const arr=[];vals.forEach(v=>arr.push(v,v));while(arr.length<n)arr.push(vals[R(vals.length)]);shuf(arr).forEach((v,i)=>all[i][k]=v)});
+  const ai=R(n);const alts=pools[P].filter(v=>v!==base[P]);all[ai][P]=alts[R(alts.length)];
+
   const ruleTxt={shape:'All the others are the same shape.',color:'All the others are the same color.',fill:'All the others are '+(base.fill?'filled in.':'empty.'),count:`All the others have ${base.count}.`};
   $('#stage').innerHTML=`<div class="q">Which one does not belong? 🕵️</div><div class="opts" style="grid-template-columns:repeat(${n<=4?2:3},1fr)">${all.map(o=>`<button class="opt">${cellSVG(o)}</button>`).join('')}</div>`;
   say('odd_q');bindOpts(ai,ruleTxt[P]);
