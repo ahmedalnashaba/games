@@ -50,6 +50,12 @@ h1{font-size:26px;margin:0;font-weight:700}
 .big{border:none;background:#5a4bd1;color:#fff;border-radius:16px;padding:12px 26px;font-family:inherit;font-size:20px;font-weight:700;margin-top:10px;cursor:pointer;box-shadow:0 5px 0 #0003}
 .tip{background:#ffffff12;border-radius:16px;padding:12px 14px;margin-top:14px;font-size:15px;line-height:1.6;color:#dfe0ff}
 .hidden{display:none}
+.player{display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:10px;font-size:18px}
+.player button{border:none;background:#ffffff22;color:#fff;border-radius:10px;padding:4px 10px;font-family:inherit;font-size:14px;cursor:pointer}
+.hstabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px;background:#f0eefc;padding:4px;border-radius:14px}
+.hstabs button{border:none;background:transparent;border-radius:10px;padding:8px 2px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;color:#1d1f3a}
+.hstabs button.sel{background:#fff;box-shadow:0 2px 0 #0002}
+tr.me td{background:#fff3c4}
 .sgrid{display:grid;margin:0 auto;border:0 solid #1d1f3a}
 .scell{aspect-ratio:1;border:solid #1d1f3a;background:#fff;font-size:28px;cursor:pointer;padding:0;border-color:#1d1f3a;outline:1px solid #ccc;outline-offset:-1px}
 .scell.empty{background:#f3f1ff}.scell.sel{background:#ffe9a8}
@@ -78,7 +84,18 @@ table.hs{width:100%;border-collapse:collapse;font-size:15px}table.hs td,table.hs
     <div style="display:flex;gap:6px"><button class="pill" id="mute">🔊</button><div class="pill">⭐ <span id="stars">0</span></div></div>
   </header>
 
-  <div id="home">
+  <div id="namescr" class="hidden">
+    <div class="panel" style="padding:28px 18px">
+      <div style="font-size:64px">👋</div>
+      <div class="q">Welcome to Brain Challenge!<br>What's your name?</div>
+      <input class="namein" id="nameinput" maxlength="14" placeholder="Your name" autocomplete="off">
+      <br><button class="big" id="namego">Let's go! 🚀</button>
+      <div class="fb" id="namefb" style="font-size:16px;color:#e63946"></div>
+    </div>
+  </div>
+
+  <div id="home" class="hidden">
+    <div class="player">👤 <b id="pname"></b><button id="pchange">Change</button></div>
     <div class="diff" id="diff">
       <button data-d="0">🟢 Easy</button><button data-d="1">🟡 Medium</button><button data-d="2">🟠 Pro</button><button data-d="3">🔴 Extreme</button>
     </div>
@@ -588,32 +605,47 @@ function GAME_path(){
 const GAMES={matrix:GAME_matrix,rotate:GAME_rotate,numbers:GAME_numbers,balance:GAME_balance,simon:GAME_simon,
   cube:GAME_cube,analogy:GAME_analogy,sudoku:GAME_sudoku,code:GAME_code,odd:GAME_odd,math:GAME_math,path:GAME_path};
 
-/* ---------- HIGH SCORES (saved on this device) ---------- */
+/* ---------- PLAYER NAME + HIGH SCORES (per level, saved on this device) ---------- */
 const GNAME={matrix:'Matrix Puzzles',rotate:'Shape Rotation',numbers:'Number Patterns',balance:'Balance Scale',simon:'Memory Lights',cube:'Cube Count',analogy:'Shape Analogies',sudoku:'Picture Sudoku',code:'Code Breaker',odd:'Odd One Out',math:'Quick Math',path:'Robot Path',mix:'IQ Test Mix'};
-const MULT=[1,2,3,5];
-function loadHS(){try{return JSON.parse(localStorage.getItem('bcHS')||'[]')}catch(e){return[]}}
-function saveHS(a){try{localStorage.setItem('bcHS',JSON.stringify(a))}catch(e){}}
-function points(){return Math.round(correct/TOTAL*100)*MULT[D]}
-function hsOffer(){
-  const pts=points();if(!correct)return;
-  const hs=loadHS();const qualifies=hs.length<10||pts>hs[hs.length-1].pts;if(!qualifies)return;
-  let last='';try{last=localStorage.getItem('bcName')||''}catch(e){}
-  const box=document.createElement('div');box.style.marginTop='14px';
-  box.innerHTML=`<div class="q" style="color:#e63946">🏆 New high score: ${pts} points!</div><input class="namein" id="hsname" maxlength="14" placeholder="Your name" value="${last.replace(/"/g,'')}"><br><button class="big" id="hssave">Save ⭐</button>`;
-  $('#stage').appendChild(box);setTimeout(()=>say('hs_new',false),1400);
-  $('#hssave').onclick=()=>{const name=($('#hsname').value||'Player').trim().slice(0,14);try{localStorage.setItem('bcName',name)}catch(e){}
-    const a=loadHS();a.push({name,game:G,d:D,score:`${correct}/${TOTAL}`,pts,date:new Date().toLocaleDateString('en-GB')});a.sort((x,y)=>y.pts-x.pts);saveHS(a.slice(0,10));
-    box.innerHTML='<div class="q">Saved! 🎉</div><button class="big" id="seehs">See High Scores 🏆</button>';$('#seehs').onclick=showHS;confetti()};
+let PLAYER='';try{PLAYER=localStorage.getItem('bcName')||''}catch(e){}
+function askName(){$('#home').classList.add('hidden');$('#game').classList.add('hidden');$('#namescr').classList.remove('hidden');$('#nameinput').value=PLAYER;setTimeout(()=>{try{$('#nameinput').focus()}catch(e){}},100)}
+function setName(){const n=$('#nameinput').value.trim().slice(0,14);if(!n){$('#namefb').textContent='Please write your name first ✍️';return}
+  PLAYER=n;try{localStorage.setItem('bcName',n)}catch(e){}$('#pname').textContent=n;$('#namescr').classList.add('hidden');$('#home').classList.remove('hidden');beep(660);beep(880,.2);say('pick_level',false)}
+$('#namego').onclick=setName;$('#nameinput').addEventListener('keydown',e=>{if(e.key==='Enter')setName()});
+$('#pchange').onclick=askName;
+if(PLAYER){$('#pname').textContent=PLAYER;$('#home').classList.remove('hidden')}else askName();
+
+function loadHS(){try{const a=JSON.parse(localStorage.getItem('bcHS4')||'null');if(a&&a.length===4)return a}catch(e){}return[[],[],[],[]]}
+function saveHS(a){try{localStorage.setItem('bcHS4',JSON.stringify(a))}catch(e){}}
+let lastEntry=null;
+function hsOffer(){ // saves automatically under the player's name, in this level's board
+  if(!correct)return;
+  const pct=Math.round(correct/TOTAL*100);
+  const all=loadHS(),board=all[D];
+  const e={name:PLAYER||'Player',game:G,score:`${correct}/${TOTAL}`,pct,t:Date.now(),date:new Date().toLocaleDateString('en-GB')};
+  board.push(e);board.sort((x,y)=>y.pct-x.pct||x.t-y.t);all[D]=board.slice(0,10);saveHS(all);
+  const rank=all[D].findIndex(x=>x.t===e.t);
+  if(rank<0)return;
+  lastEntry=e.t;
+  const box=document.createElement('div');box.style.marginTop='12px';
+  box.innerHTML=`<div class="q" style="color:#e63946">${rank===0?'🥇 #1 in '+DIFFS[D].n+'!':'🏆 You are #'+(rank+1)+' in '+DIFFS[D].n+'!'}</div><button class="big" id="seehs" style="background:#ffb703;color:#1d1f3a">See High Scores 🏆</button>`;
+  $('#stage').appendChild(box);$('#seehs').onclick=()=>showHS(D);
+  if(rank<3){setTimeout(()=>say('hs_new',false),1600);confetti()}
 }
-function showHS(){
+function showHS(tab){
+  if(typeof tab!=='number')tab=D;
   stopSay();clearTimer();simonStop=true;
   $('#home').classList.add('hidden');$('#game').classList.remove('hidden');
   $('#lvl').textContent='🏆 High Scores';$('#bar').style.width='100%';$('#fb').textContent='';
-  const a=loadHS();const medal=i=>['🥇','🥈','🥉'][i]||(i+1);
-  $('#stage').innerHTML=`<div class="q">🏆 Top 10</div>`+(a.length?`<table class="hs"><tr><th>#</th><th>Name</th><th>Game</th><th>Level</th><th>Points</th></tr>${a.map((e,i)=>`<tr><td>${medal(i)}</td><td><b>${e.name}</b></td><td style="font-size:13px">${GNAME[e.game]||e.game}</td><td style="font-size:13px">${DIFFS[e.d].n}</td><td><b>${e.pts}</b><br><span style="font-size:11px;color:#888">${e.score}</span></td></tr>`).join('')}</table>`:'<p>No scores yet. Play a game to get on the board! 💪</p>')+
-   `<p style="font-size:13px;color:#888;margin-top:12px">Points = % correct × level (Easy ×1, Medium ×2, Pro ×3, Extreme ×5). Saved on this device.</p>`;
+  const all=loadHS(),a=all[tab];const medal=i=>['🥇','🥈','🥉'][i]||(i+1);
+  $('#stage').innerHTML=`<div class="hstabs">${DIFFS.map((d,i)=>`<button data-t="${i}" class="${i===tab?'sel':''}">${['🟢','🟡','🟠','🔴'][i]} ${d.n}</button>`).join('')}</div>
+   <div class="q">🏆 ${DIFFS[tab].n} — Top 10</div>`+
+   (a.length?`<table class="hs"><tr><th>#</th><th>Name</th><th>Game</th><th>Score</th></tr>${a.map((e,i)=>`<tr class="${e.t===lastEntry?'me':''}"><td>${medal(i)}</td><td><b>${e.name.replace(/</g,'')}</b></td><td style="font-size:13px">${GNAME[e.game]||e.game}</td><td><b>${e.pct}%</b><br><span style="font-size:11px;color:#888">${e.score}</span></td></tr>`).join('')}</table>`
+   :'<p>No scores yet in this level. Be the first! 💪</p>')+
+   `<p style="font-size:13px;color:#888;margin-top:12px">Saved on this device.</p>`;
+  document.querySelectorAll('.hstabs button').forEach(b=>b.onclick=()=>{beep(520,.06);showHS(+b.dataset.t)});
 }
-$('#hsbtn').onclick=showHS;
+$('#hsbtn').onclick=()=>showHS(D);
 
 </script>
 </body>
